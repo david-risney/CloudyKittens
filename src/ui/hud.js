@@ -29,6 +29,14 @@ export function applySelectionToCat(state, selection, catId) {
     return base;
 }
 const ITEM_ORDER = [...ALL_ITEM_IDS];
+const ACTIVITY_ICON = {
+    wandering: '🐾',
+    sitting: '🪑',
+    sleeping: '💤',
+};
+function capitalize(text) {
+    return text.charAt(0).toUpperCase() + text.slice(1);
+}
 /** Build the bottom HUD DOM and wire selection + dispatch. */
 export function createHud(container, opts) {
     let selection = null;
@@ -36,6 +44,9 @@ export function createHud(container, opts) {
     container.classList.add('hud');
     const money = document.createElement('div');
     money.className = 'hud-money';
+    const catStats = document.createElement('div');
+    catStats.className = 'hud-cat-stats';
+    catStats.hidden = true;
     const items = document.createElement('div');
     items.className = 'hud-items';
     const actions = document.createElement('div');
@@ -43,7 +54,7 @@ export function createHud(container, opts) {
     const petBtn = makeButton('Pet', 'pet');
     const lookupBtn = makeButton('Lookup', 'lookup');
     actions.append(petBtn, lookupBtn);
-    container.append(money, items, actions);
+    container.append(money, catStats, items, actions);
     function makeButton(label, key) {
         const b = document.createElement('button');
         b.type = 'button';
@@ -51,6 +62,39 @@ export function createHud(container, opts) {
         b.dataset.key = key;
         b.textContent = label;
         return b;
+    }
+    function statChip(icon, label, value) {
+        const chip = document.createElement('span');
+        chip.className = 'hud-stat';
+        chip.title = label;
+        chip.setAttribute('aria-label', `${label}: ${value}`);
+        const ic = document.createElement('span');
+        ic.className = 'hud-stat-icon';
+        ic.setAttribute('aria-hidden', 'true');
+        ic.textContent = icon;
+        const val = document.createElement('span');
+        val.className = 'hud-stat-value';
+        val.textContent = String(value);
+        chip.append(ic, val);
+        return chip;
+    }
+    /** Show the currently selected cat's important stats as icons in the HUD. */
+    function renderStats() {
+        const id = opts.getSelectedCatId?.() ?? null;
+        const cat = id ? opts.getState().cats.find((c) => c.id === id) : null;
+        if (!cat) {
+            catStats.hidden = true;
+            catStats.replaceChildren();
+            return;
+        }
+        catStats.hidden = false;
+        const name = document.createElement('span');
+        name.className = 'hud-cat-name';
+        name.textContent = `🐈 ${cat.name}`;
+        const activity = cat.activity;
+        const activityChip = statChip(ACTIVITY_ICON[activity] ?? '🐈', 'Activity', capitalize(activity));
+        activityChip.classList.add('hud-stat-activity');
+        catStats.replaceChildren(name, statChip('❤️', 'Trust', Math.round(cat.trust)), statChip('🍗', 'Hunger', Math.round(cat.hunger)), statChip('😴', 'Sleepiness', Math.round(cat.sleep)), activityChip);
     }
     function setSelection(next) {
         selection = next;
@@ -80,6 +124,7 @@ export function createHud(container, opts) {
         lookupBtn.setAttribute('aria-pressed', String(selection?.kind === 'lookup'));
         petBtn.classList.toggle('selected', selection?.kind === 'pet');
         lookupBtn.classList.toggle('selected', selection?.kind === 'lookup');
+        renderStats();
     }
     function applyToCat(catId) {
         if (!selection)
@@ -98,5 +143,5 @@ export function createHud(container, opts) {
         render();
     }
     render();
-    return { render, getSelection: () => selection, applyToCat };
+    return { render, renderStats, getSelection: () => selection, applyToCat };
 }

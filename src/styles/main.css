@@ -89,6 +89,47 @@ body {
   gap: 0.4rem;
 }
 
+/* Selected-cat stats strip */
+.hud-cat-stats {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0.6rem;
+  background: var(--panel);
+  border: 2px solid var(--panel-border);
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.hud-cat-stats[hidden] {
+  display: none;
+}
+
+.hud-cat-name {
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.hud-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.15rem 0.45rem;
+  background: var(--bg);
+  border-radius: 999px;
+  font-variant-numeric: tabular-nums;
+}
+
+.hud-stat-icon {
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
+.hud-stat-value {
+  color: var(--ink-soft);
+  font-weight: 600;
+}
+
 .hud-btn,
 .shop-open-btn,
 .shop-adopt,

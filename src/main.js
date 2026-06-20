@@ -47,6 +47,7 @@ const hud = createHud(hudBar, {
     setState: (s) => {
         state = s;
     },
+    getSelectedCatId: () => selectedCatId,
     onLookup: (catId) => {
         selectedCatId = catId;
         openLookupModal(modalRoot, {
@@ -99,6 +100,7 @@ canvas.addEventListener('click', (ev) => {
     if (cat) {
         selectedCatId = cat.id;
         hud.applyToCat(cat.id);
+        hud.render();
     }
 });
 canvas.tabIndex = 0;
@@ -112,10 +114,12 @@ canvas.addEventListener('keydown', (ev) => {
     const idx = state.cats.findIndex((c) => c.id === selectedCatId);
     if (ev.key === 'ArrowRight' || ev.key === 'ArrowDown') {
         selectedCatId = state.cats[(idx + 1 + state.cats.length) % state.cats.length].id;
+        hud.render();
         ev.preventDefault();
     }
     else if (ev.key === 'ArrowLeft' || ev.key === 'ArrowUp') {
         selectedCatId = state.cats[(idx - 1 + state.cats.length) % state.cats.length].id;
+        hud.render();
         ev.preventDefault();
     }
     else if ((ev.key === 'Enter' || ev.key === ' ') && selectedCatId) {
@@ -142,6 +146,7 @@ function frame(nowMs) {
         reducedMotion,
         timeMs: nowMs,
     });
+    hud.renderStats();
     requestAnimationFrame(frame);
 }
 const intro = createIntro(modalRoot, {
