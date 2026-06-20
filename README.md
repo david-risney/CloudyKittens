@@ -5,48 +5,51 @@ them to build trust, earn a little money, and watch them wander, sit, and nap in
 beige room. There is no fail state, no timer, and no stress — just gentle care.
 
 Built on **web platform Baseline** technology with **no frameworks** (no React, no
-Tailwind) and **zero runtime dependencies**. The shipped game is plain static files:
-vanilla TypeScript, Canvas 2D, HTML/CSS, Web Audio, and `localStorage`.
+Tailwind) and **zero runtime dependencies**. The game is plain client-side static files
+— hand-written ES2022 JavaScript modules, Canvas 2D, HTML/CSS, Web Audio, and
+`localStorage` — that run **directly in the browser from source with no build step**.
 
 ## Requirements
 
-- Node.js LTS — for the dev/build/test tooling only (Vite, Vitest, TypeScript, jsdom).
 - A modern Baseline browser (current Chrome, Edge, Firefox, or Safari).
+- Node.js LTS — optional, only for running the automated test suite (Vitest + jsdom).
 
-## Install
+## Run the game
 
-```bash
-npm install
-```
-
-## Develop
+The game needs **no build and no install** — it is served straight from source. Use any
+static file server from the repository root, for example:
 
 ```bash
-npm run dev          # start the Vite dev server, then open the printed localhost URL
+npx serve .            # or: npm start
+# then open the printed http://localhost URL
 ```
+
+```bash
+python -m http.server  # any static server works
+```
+
+> Because the game loads ES modules, open it over `http://` (a static server) rather than
+> a `file://` path.
 
 ## Test
 
 This project is test-driven (see `.specify/memory/constitution.md`, Principle III).
+Vitest + jsdom are **dev-only** test tooling and are never shipped or required to play.
 
 ```bash
+npm install          # install the dev-only test tooling (Vitest, jsdom)
 npm test             # run the full Vitest suite once
 npm run test:watch   # re-run on change (Red → Green → Refactor)
-npm run typecheck    # tsc --noEmit type checking
 ```
 
 - `src/game/*` is pure, DOM-free logic covered by Node unit tests in `tests/unit/`.
 - Presentation/platform code (`src/ui`, `src/audio`, `src/platform`) is covered by jsdom
   tests in `tests/ui/`.
 
-## Build & preview
+## Deploy
 
-```bash
-npm run build        # emit static files to dist/ (no framework runtime)
-npm run preview      # serve dist/ locally to confirm static deployability
-```
-
-The contents of `dist/` can be served by any static file host.
+Copy the repository's static files (`index.html`, `src/`, `public/`, `assets/`) to any
+static host. There is no build artifact and no bundling step.
 
 ## How to play
 

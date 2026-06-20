@@ -6,27 +6,30 @@ document records the key technical decisions and the alternatives considered.
 
 ## D1. Language & build tooling
 
-- **Decision**: TypeScript (ES2022 modules) built with **Vite**; ship plain static
-  assets.
-- **Rationale**: The constitution permits TypeScript when output is standard JS with no
-  framework runtime. Vite is dev-only tooling that emits framework-free static files,
-  preserving Principles I and V. TypeScript's types make the game state and rules safer
-  and easier to test-first.
+- **Decision**: Hand-written standard **ES2022 JavaScript modules**, shipped as plain
+  static files that run **directly in the browser from source with no build step**.
+- **Rationale**: The constitution requires the game to run on the Baseline web platform
+  with zero runtime dependencies and to be served as static files (Principles I and V).
+  Authoring native ES modules means the browser loads `src/main.js` and its imports
+  directly — no transpiler or bundler is needed to run or ship the game, which is the
+  simplest possible static deployment.
 - **Alternatives considered**:
-  - *Vanilla JS, no build*: zero tooling, but loses type safety and ergonomic module
-    bundling; rejected for maintainability.
-  - *esbuild/Rollup directly*: viable but Vite gives a better dev server + test
-    integration with Vitest for the same static output.
+  - *TypeScript compiled via Vite*: adds type safety but requires a build step before the
+    code can run in a browser; rejected because it conflicts with shipping runnable
+    source directly and adds tooling churn.
+  - *esbuild/Rollup bundling*: unnecessary — native ES module imports resolve in the
+    browser without bundling for a project of this size.
 
 ## D2. Test framework
 
-- **Decision**: **Vitest** (+ jsdom for the thin UI-wiring tests).
-- **Rationale**: Test-first is non-negotiable (Principle III). Vitest pairs naturally
-  with Vite/TS, runs fast, and supports both pure-logic unit tests and jsdom DOM tests.
-  Test runners are tooling, not prohibited UI frameworks.
+- **Decision**: **Vitest** (+ jsdom for the thin UI-wiring tests), as dev-only tooling.
+- **Rationale**: Test-first is non-negotiable (Principle III). Vitest runs the plain ES
+  module sources directly, is fast, and supports both pure-logic unit tests and jsdom DOM
+  tests. It is dev-only test tooling — never shipped or required to play — so it does not
+  affect the no-build, framework-free runtime.
 - **Alternatives considered**:
-  - *node:test*: no extra dep, but weaker TS/jsdom/watch ergonomics.
-  - *Jest*: heavier config with native ESM/TS; Vitest is lighter for a Vite project.
+  - *node:test*: no extra dep, but weaker jsdom/watch ergonomics.
+  - *Jest*: heavier ESM config; Vitest is lighter and runs the native modules as-is.
 
 ## D3. Rendering approach (2D isometric home + cats)
 

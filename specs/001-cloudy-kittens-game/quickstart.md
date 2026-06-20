@@ -5,14 +5,15 @@ in `tasks.md`; logic/UI contracts live in `contracts/` and `data-model.md`.
 
 ## Prerequisites
 
-- Node.js LTS (for the Vite/Vitest dev tooling only — there are **zero runtime
-  dependencies**; the built game is plain static files).
-- A modern Baseline browser (current Chrome, Edge, Firefox, or Safari).
+- A modern Baseline browser (current Chrome, Edge, Firefox, or Safari) to play.
+- Node.js LTS — optional, only to run the automated test suite (Vitest + jsdom). There
+  are **zero runtime dependencies**; the game is plain client-side static files that run
+  directly in the browser from source with **no build step**.
 
-## Setup
+## Setup (tests only)
 
 ```bash
-npm install        # installs dev-only tooling (vite, vitest, typescript, jsdom)
+npm install        # installs dev-only test tooling (vitest, jsdom)
 ```
 
 ## Run the test-first suite
@@ -24,17 +25,14 @@ npm test           # vitest: unit tests for src/game/* and jsdom UI-wiring tests
 Per Constitution Principle III, tests are written before implementation; this command
 should be run continuously (Red → Green → Refactor).
 
-## Run the game (dev)
+## Run the game
+
+No build and no install are required — serve the source with any static file server and
+open it over `http://` (ES modules don't load over `file://`):
 
 ```bash
-npm run dev        # vite dev server; open the printed http://localhost URL
-```
-
-## Build static assets & preview
-
-```bash
-npm run build      # emits plain static files to dist/ (no framework runtime)
-npm run preview    # serve dist/ locally to confirm static deployability
+npx serve .        # or: npm start, or: python -m http.server
+# then open the printed http://localhost URL
 ```
 
 ## End-to-end validation scenarios
@@ -70,4 +68,5 @@ Map directly to spec Success Criteria / acceptance scenarios.
 ## Done criteria
 
 All `npm test` tests pass and all nine scenarios above behave as described in a Baseline
-browser, with the built `dist/` running from a static file server.
+browser, with the source (`index.html` + `src/`) running directly from a static file
+server with no build step.

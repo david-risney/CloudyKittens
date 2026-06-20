@@ -2,9 +2,10 @@
 Active feature plan: specs/001-cloudy-kittens-game/plan.md
 
 Cloudy Kittens — a calm, cute 2D isometric cat-care game. Framework-free modern web
-(Baseline) app: TypeScript → standard ES2022 modules, Canvas 2D for the scene, HTML/CSS
-overlay for UI, Web Audio for sound, localStorage for save. Vite (build) + Vitest +
-jsdom (test) are dev-only; zero runtime dependencies. Test-first is mandatory.
+(Baseline) app shipped as plain client-side static files that run directly in a browser
+with no build step: hand-written ES2022 JavaScript modules, Canvas 2D for the scene,
+HTML/CSS overlay for UI, Web Audio for sound, localStorage for save. Vitest + jsdom
+(test) are the only dev-only tooling; zero runtime dependencies. Test-first is mandatory.
 
 Pure DOM-free game logic lives in src/game/* (state, cats, economy, simulation, shop,
 day, persistence) and is unit-tested in isolation; src/ui, src/audio, src/platform hold

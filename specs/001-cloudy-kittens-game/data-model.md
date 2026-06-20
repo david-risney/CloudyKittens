@@ -1,8 +1,9 @@
 # Phase 1 Data Model: Cloudy Kittens Game
 
-DOM-free TypeScript types in `src/game/state.ts` (and helpers in sibling modules). All
-state is a single serializable `GameState` tree persisted as JSON. Numeric tunables shown
-with example defaults are **balancing values** finalized in code constants.
+DOM-free game state defined in `src/game/state.js` (with shared shape/constants in
+`src/game/types.js` and helpers in sibling modules). All state is a single serializable
+`GameState` tree persisted as JSON. Numeric tunables shown with example defaults are
+**balancing values** finalized in code constants.
 
 ## Enums / unions
 

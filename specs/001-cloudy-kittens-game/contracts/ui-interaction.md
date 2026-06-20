@@ -12,7 +12,7 @@ their required interactive elements, and the logic calls each triggers.
 - Honor `prefers-reduced-motion`: reduce or stop cat wandering animation and transitions.
 - No fail/lose state, countdown, or stress mechanic is ever presented (Principle IV).
 
-## Surface 1 — Intro screen (`src/ui/intro.ts`)
+## Surface 1 — Intro screen (`src/ui/intro.js`)
 
 Required elements:
 - Game title "Cloudy Kittens" rendered in the **cloud-style font** (FR-023).
@@ -24,7 +24,7 @@ Required elements:
   toggles bound to `settings.musicEnabled` / `settings.sfxEnabled`; changes persist
   immediately via save (SC-008).
 
-## Surface 2 — Home scene (`src/ui/renderer.ts`)
+## Surface 2 — Home scene (`src/ui/renderer.js`)
 
 - Renders the cozy beige isometric interior including a **couch** (FR-022) onto Canvas 2D.
 - Draws each cat at its projected tile position with depth sorting; animates wandering,
@@ -32,7 +32,7 @@ Required elements:
 - Driven by a `requestAnimationFrame` loop calling `simulation.step(...)` then redrawing.
 - Cats emit random **meow** SFX at intervals when `settings.sfxEnabled`.
 
-## Surface 3 — Bottom HUD (`src/ui/hud.ts`)
+## Surface 3 — Bottom HUD (`src/ui/hud.js`)
 
 Required elements:
 - Selectable owned **items** (with counts), a **Pet** action, and a **Lookup** action.
@@ -49,7 +49,7 @@ Interaction model (FR-001):
    - Lookup → open Surface 5 for that cat.
 4. After any state change, trigger debounced auto-save and refresh affected UI.
 
-## Surface 4 — Shop modal (`src/ui/modals.ts`)
+## Surface 4 — Shop modal (`src/ui/modals.js`)
 
 - **Cats section**: shows exactly the 5 `shop.adoptableCats` for the day (FR-015). First
   adoption labeled free; others show 30-coin cost. Adopt → `shop.adopt(...)`; reflect
@@ -58,20 +58,20 @@ Interaction model (FR-001):
   block unaffordable purchases gracefully (FR-017/019).
 - Re-opening the modal the same day shows the same 5 cats (deterministic roster).
 
-## Surface 5 — Lookup modal (book pages) (`src/ui/modals.ts`)
+## Surface 5 — Lookup modal (book pages) (`src/ui/modals.js`)
 
 - Opened via the Lookup action on a cat. Presented as **book pages** (FR-008).
 - Displays the cat's name, breed, personality, likes, and current trust, hunger, and
   sleep state. Read-only; closeable via button and keyboard (Esc).
 
-## Persistence wiring (`src/platform/storage.ts` + `main.ts`)
+## Persistence wiring (`src/platform/storage.js` + `main.js`)
 
 - On startup: `persistence.load(storage, clock)` → if no/invalid save, `newGame` is used
   automatically (FR-021); then show intro.
 - Auto-save (debounced) after every state-changing interaction and periodically from the
   loop, using `persistence.save(...)` (FR-020). No manual save/load UI exists.
 
-## Audio wiring (`src/audio/audio.ts`)
+## Audio wiring (`src/audio/audio.js`)
 
 - `playMusic()/stopMusic()` gated by `settings.musicEnabled`; `playSfx(name)` gated by
   `settings.sfxEnabled`. Music starts only after the Start user gesture.

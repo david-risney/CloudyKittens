@@ -23,7 +23,7 @@ interface ClockPort {
 }
 ```
 
-## state.ts
+## state.js
 
 ```ts
 function newGame(clock: ClockPort): GameState;
@@ -33,14 +33,14 @@ function newGame(clock: ClockPort): GameState;
 
 Guarantees: a brand-new game satisfies all GameState invariants (data-model.md).
 
-## cats.ts
+## cats.js
 
 ```ts
 function createCat(seed: number): Cat;            // deterministic from seed
 function itemPreference(cat: Cat, item: ItemId): number; // like strength (may be <=0)
 ```
 
-## economy.ts
+## economy.js
 
 ```ts
 type FeedResult = { state: GameState; consumed: boolean; moneyGained: number; trustDelta: number };
@@ -61,7 +61,7 @@ function pet(state: GameState, catId: string): GameState;
 Guarantees: `money` never negative; trust clamped to `[TRUST_MIN, TRUST_MAX]`; feeding a
 full cat is a pure no-op except returning `consumed=false`.
 
-## simulation.ts
+## simulation.js
 
 ```ts
 function step(state: GameState, deltaMs: number, clock: ClockPort): GameState;
@@ -75,7 +75,7 @@ function applyElapsedSinceLastSeen(state: GameState, clock: ClockPort): GameStat
 Guarantees: deterministic given `deltaMs`/clock; hunger monotonically rises without
 feeding; a cat with `sleep>=SLEEP_FALL_ASLEEP` becomes `sleeping`.
 
-## shop.ts
+## shop.js
 
 ```ts
 function refreshIfNewDay(state: GameState, clock: ClockPort): GameState;
@@ -94,13 +94,13 @@ function buyItem(state: GameState, item: ItemId): BuyResult;
 Guarantees: roster always length 5; same `today()` → identical roster (deterministic
 seed); no negative money; cats never exceed capacity.
 
-## day.ts
+## day.js
 
 ```ts
 function isNewDay(lastShopDay: string, clock: ClockPort): boolean; // today() !== lastShopDay
 ```
 
-## persistence.ts
+## persistence.js
 
 ```ts
 const SAVE_KEY: string;
