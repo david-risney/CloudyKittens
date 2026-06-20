@@ -1,0 +1,23 @@
+cat game - Cloudy Kittens
+LEtters use cloud font
+written using modern web technologies
+
+cute home interior with subdued beige color theme. Has couch
+2d isometric perspective
+
+cats have breed (3 appearances per breed), personality (playful, hunter, savage, cute, sleepy, and so on), likes (salmon, tuna, catnip, mouse toy, mouse, chicken, string, treat), name, current state: trust level (raised by giving likes and playing), hunger level (lowered by giving food), sleep level (lowered by sleeping).
+cats wander around house and sometimes sit and sometimes fall asleep (based on sleep level)
+
+Feeding cat when it has positive trust level gives money. More trust gives more money.
+Feeding when cat is full cancels feeding. Food is not used, hunger level does not change, money not gained
+
+
+Player has: inventory of different items (the likes of different cats), money (start at 100$). UI at bottom lets player choose item or pet or lookup. Choosing item then clicking cat uses item on cat - feeds them food uses up food and decreases hunger and raises or lowers trust based on how much they like the food. Toys used on them doesn't use up toy and lowers or raises trust based on how much they like the toy. Using pet on a cat raises trust. Lookup on cat opens modal dialog (looks like pages in book) to show info about selected cat
+
+Shop button: cat section to see cats to adopt (5 cats each day. cats cost 30 coins. first cat is free), and items to buy.
+
+auto save progress. Auto load when first opening game.
+
+Intro screen shows game name, game designer (Elisabeth Risney), big cat face and Start button and settings button for music, and sound effects
+Calm (creative commons or otherwise free licensed music) music plays in the background.
+Sound effects for all actions done on cats and cats randomly meow

@@ -1,0 +1,276 @@
+:root {
+  /* Subdued beige theme */
+  --bg: #efe6d8;
+  --bg-deep: #e3d5c0;
+  --panel: #f6efe2;
+  --panel-border: #cdb79e;
+  --ink: #5a4a37;
+  --ink-soft: #7d6b54;
+  --accent: #b9906a;
+  --accent-soft: #d8b892;
+  --focus: #7a5a3a;
+  --good: #8a9a6b;
+  font-family: system-ui, "Segoe UI", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg-deep);
+  color: var(--ink);
+}
+
+#app {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+#scene {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--bg);
+  image-rendering: auto;
+}
+
+#ui {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+#ui > * {
+  pointer-events: auto;
+}
+
+/* Bottom HUD */
+.hud {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.6rem 1rem;
+  background: linear-gradient(180deg, rgba(246, 239, 226, 0) 0%, var(--panel) 40%);
+  border-top: 2px solid var(--panel-border);
+}
+
+.hud-money {
+  font-weight: 700;
+  font-size: 1.1rem;
+  padding: 0.35rem 0.7rem;
+  background: var(--panel);
+  border: 2px solid var(--panel-border);
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.hud-items {
+  display: flex;
+  gap: 0.4rem;
+  flex: 1;
+  flex-wrap: wrap;
+}
+
+.hud-actions {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.hud-btn,
+.shop-open-btn,
+.shop-adopt,
+.shop-buy,
+.modal-close,
+.intro-start,
+.intro-settings {
+  font: inherit;
+  color: var(--ink);
+  background: var(--panel);
+  border: 2px solid var(--panel-border);
+  border-radius: 0.6rem;
+  padding: 0.4rem 0.7rem;
+  cursor: pointer;
+  transition: transform 0.12s ease, background 0.12s ease;
+}
+
+.hud-btn:hover,
+.shop-open-btn:hover,
+.shop-adopt:hover,
+.shop-buy:hover,
+.modal-close:hover,
+.intro-start:hover,
+.intro-settings:hover {
+  background: var(--accent-soft);
+}
+
+.hud-btn[aria-pressed='true'],
+.hud-btn.selected {
+  background: var(--accent);
+  color: #fff;
+}
+
+.shop-open-btn {
+  position: absolute;
+  right: 1rem;
+  bottom: 4.2rem;
+}
+
+.hud-btn:focus-visible,
+.shop-open-btn:focus-visible,
+.shop-adopt:focus-visible,
+.shop-buy:focus-visible,
+.modal-close:focus-visible,
+.intro-start:focus-visible,
+.intro-settings:focus-visible,
+#scene:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* Modal / book pages */
+.modal-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(60, 48, 33, 0.35);
+}
+
+.modal {
+  background: var(--panel);
+  border: 3px solid var(--panel-border);
+  border-radius: 1rem;
+  padding: 1.2rem 1.4rem;
+  max-width: min(720px, 92vw);
+  max-height: 86vh;
+  overflow: auto;
+  box-shadow: 0 12px 40px rgba(60, 48, 33, 0.3);
+}
+
+.modal-title {
+  margin: 0 0 0.3rem;
+}
+
+.modal-status {
+  min-height: 1.2rem;
+  margin: 0 0 0.6rem;
+  color: var(--ink-soft);
+  font-style: italic;
+}
+
+.shop-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.shop-row-label {
+  color: var(--ink);
+}
+
+.modal-close {
+  margin-top: 0.8rem;
+}
+
+.book {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.book-page {
+  background: #fbf6ec;
+  border: 2px solid var(--panel-border);
+  border-radius: 0.5rem;
+  padding: 0.8rem 1rem;
+}
+
+/* Intro screen */
+.intro {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  background: radial-gradient(circle at 50% 30%, var(--panel) 0%, var(--bg) 70%);
+  text-align: center;
+  z-index: 10;
+}
+
+.intro[hidden] {
+  display: none;
+}
+
+.intro-title {
+  /* Cloud-style lettering: soft, rounded, puffy. Uses bundled font if available. */
+  font-family: 'CloudFont', system-ui, sans-serif;
+  font-size: clamp(2.5rem, 8vw, 5rem);
+  color: #fff;
+  letter-spacing: 0.04em;
+  margin: 0;
+  text-shadow:
+    0 2px 0 var(--accent-soft),
+    0 0 18px rgba(255, 255, 255, 0.9),
+    0 8px 24px rgba(120, 90, 58, 0.35);
+}
+
+.intro-credit {
+  color: var(--ink-soft);
+  font-style: italic;
+  margin: 0;
+}
+
+.intro-cat {
+  width: 140px;
+  height: 140px;
+}
+
+.intro-settings-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.8rem 1rem;
+  background: var(--panel);
+  border: 2px solid var(--panel-border);
+  border-radius: 0.6rem;
+}
+
+.setting-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+@font-face {
+  font-family: 'CloudFont';
+  /* Placeholder: replace with a bundled free-licensed cloud-style font (see assets/CREDITS.md). */
+  src: local('Comic Sans MS'), local('Baloo 2'), local('Quicksand');
+  font-display: swap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
