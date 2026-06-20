@@ -1,5 +1,12 @@
-import { tileToScreen, sortByDepth } from './iso.js';
+import { tileToScreen } from './iso.js';
 import { GRID_MIN, GRID_MAX, TILE_W, TILE_H } from '../game/constants.js';
+// Per-cat visual interpolation state so cats glide (and animate a walk cycle)
+// between the discrete tiles the simulation moves them across.
+const catRender = new Map();
+let lastFrameMs = null;
+const TILES_PER_SEC = 2.2;
+const WALK_RATE = 9;
+const WALK_THRESHOLD = 0.06;
 const FLOOR_LIGHT = '#e8dcc6';
 const FLOOR_DARK = '#ddcdb2';
 const WALL = '#cdb79e';
@@ -206,12 +213,25 @@ function drawBodyMarkings(ctx, cat, x, baseY, pal) {
     }
     ctx.restore();
 }
-function drawCat(ctx, cat, ox, oy, selected, reducedMotion) {
-    const { x, y } = tileToScreen(cat.tileX, cat.tileY, ox, oy);
-    const bob = !reducedMotion && cat.activity === 'wandering'
-        ? Math.sin((cat.tileX + cat.tileY) * 1.3) * 2
-        : 0;
-    const baseY = y - 16 + bob;
+/** Two alternating front paws that lift in a stepping rhythm while walking. */
+function drawWalkingFeet(ctx, x, baseY, color, phase) {
+    const lift = 3.2;
+    const yL = baseY + 20 - Math.max(0, Math.sin(phase)) * lift;
+    const yR = baseY + 20 - Math.max(0, Math.sin(phase + Math.PI)) * lift;
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.ellipse(x - 7, yL, 4.5, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(x + 7, yR, 4.5, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
+}
+function drawCat(ctx, cat, render, ox, oy, selected, reducedMotion) {
+    const { x, y } = tileToScreen(render.rx, render.ry, ox, oy);
+    const walking = render.walking && !reducedMotion;
+    // Body lifts a touch on each step for a gentle walk bounce.
+    const bob = walking ? Math.abs(Math.sin(render.phase)) * 2.5 : 0;
+    const baseY = y - 16 - bob;
     const pal = paletteFor(cat);
     const coat = pal.coats[cat.appearance] ?? pal.coats[0];
     // Soft ground shadow so cats read clearly against the floor.
@@ -254,6 +274,11 @@ function drawCat(ctx, cat, ox, oy, selected, reducedMotion) {
         }
     }
     else {
+        // Stepping feet beneath the body while walking (drawn first so the body overlaps).
+        if (walking) {
+            const footColor = cat.breed === 'siamese' || cat.breed === 'tuxedo' ? pal.point : coat;
+            drawWalkingFeet(ctx, x, baseY, footColor, render.phase);
+        }
         // Tail (darker point for siamese/tuxedo).
         ctx.strokeStyle = cat.breed === 'siamese' || cat.breed === 'tuxedo' ? pal.point : coat;
         ctx.lineWidth = 6;
@@ -357,16 +382,74 @@ function drawCat(ctx, cat, ox, oy, selected, reducedMotion) {
         ctx.fillText('z', x + 18, baseY - 8);
     }
 }
+/**
+ * Advance a cat's interpolated render position toward its logical tile, and track
+ * whether it is currently walking (so the renderer can animate a step cycle).
+ */
+function updateCatRender(cat, dt, reducedMotion) {
+    let r = catRender.get(cat.id);
+    if (!r) {
+        r = { rx: cat.tileX, ry: cat.tileY, walking: false, phase: 0 };
+        catRender.set(cat.id, r);
+    }
+    const dx = cat.tileX - r.rx;
+    const dy = cat.tileY - r.ry;
+    const dist = Math.hypot(dx, dy);
+    if (reducedMotion) {
+        r.rx = cat.tileX;
+        r.ry = cat.tileY;
+        r.walking = false;
+        return r;
+    }
+    const maxStep = TILES_PER_SEC * (dt / 1000);
+    if (dist <= maxStep || dist < 1e-3) {
+        r.rx = cat.tileX;
+        r.ry = cat.tileY;
+    }
+    else {
+        r.rx += (dx / dist) * maxStep;
+        r.ry += (dy / dist) * maxStep;
+    }
+    const walking = dist > WALK_THRESHOLD && cat.activity !== 'sleeping';
+    r.walking = walking;
+    r.phase = walking ? r.phase + (dt / 1000) * WALK_RATE : 0;
+    return r;
+}
 /** Draws the whole scene: floor, couch, and depth-sorted cats. */
 export function renderScene(ctx, canvas, state, opts = {}) {
+    const timeMs = opts.timeMs ?? 0;
+    const reducedMotion = opts.reducedMotion ?? false;
+    let dt = lastFrameMs == null ? 16 : timeMs - lastFrameMs;
+    if (!(dt > 0))
+        dt = 16;
+    if (dt > 100)
+        dt = 100;
+    lastFrameMs = timeMs;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = WALL;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     const { ox, oy } = originFor(canvas);
     drawFloor(ctx, ox, oy);
     drawCouch(ctx, ox, oy);
-    for (const cat of sortByDepth(state.cats)) {
-        drawCat(ctx, cat, ox, oy, opts.selectedCatId === cat.id, opts.reducedMotion ?? false);
+    // Update interpolated positions, then prune state for departed cats.
+    const liveIds = new Set();
+    for (const cat of state.cats) {
+        liveIds.add(cat.id);
+        updateCatRender(cat, dt, reducedMotion);
+    }
+    for (const id of catRender.keys()) {
+        if (!liveIds.has(id))
+            catRender.delete(id);
+    }
+    // Depth-sort by interpolated position so overlap stays correct while walking.
+    const order = [...state.cats].sort((a, b) => {
+        const ra = catRender.get(a.id);
+        const rb = catRender.get(b.id);
+        return ra.rx + ra.ry - (rb.rx + rb.ry);
+    });
+    for (const cat of order) {
+        const r = catRender.get(cat.id);
+        drawCat(ctx, cat, r, ox, oy, opts.selectedCatId === cat.id, reducedMotion);
     }
 }
 /** Hit-test a screen point to the nearest cat (for click targeting). */
@@ -375,7 +458,10 @@ export function catAtPoint(canvas, state, px, py) {
     let best = null;
     let bestD = Infinity;
     for (const cat of state.cats) {
-        const { x, y } = tileToScreen(cat.tileX, cat.tileY, ox, oy);
+        const r = catRender.get(cat.id);
+        const tx = r ? r.rx : cat.tileX;
+        const ty = r ? r.ry : cat.tileY;
+        const { x, y } = tileToScreen(tx, ty, ox, oy);
         const d = Math.hypot(px - x, py - (y - 14));
         if (d < 36 && d < bestD) {
             best = cat;
