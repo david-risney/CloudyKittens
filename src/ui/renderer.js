@@ -4,10 +4,11 @@ import { GRID_MIN, GRID_MAX, TILE_W, TILE_H } from '../game/constants.js';
 // between the discrete tiles the simulation moves them across.
 const catRender = new Map();
 let lastFrameMs = null;
-// Visual glide speed (tiles/sec). Kept slow so a cat's stroll is easy to follow;
-// each cat gets a stable per-cat multiplier so they don't all move in lockstep.
-const BASE_TILES_PER_SEC = 1.0;
-const SPEED_VARIATION = 0.6; // ±, so cats range ~0.7..1.3 tiles/sec
+// Visual glide speed (tiles/sec). Tuned to keep pace with the simulation's one-tile
+// step cadence so a cat visibly strolls tile-to-tile; each cat gets a stable
+// per-cat multiplier so they don't all move in lockstep.
+const BASE_TILES_PER_SEC = 1.3;
+const SPEED_VARIATION = 0.6; // ±, so cats range ~1.0..1.6 tiles/sec
 // Radians of step cycle advanced per tile travelled (≈1.5 strides per tile), so the
 // paw/bob animation stays in sync with however fast a given cat is actually walking.
 const STEP_RAD_PER_TILE = Math.PI * 3;

@@ -15,36 +15,38 @@ function clampGrid(v) {
     return Math.max(GRID_MIN, Math.min(GRID_MAX, v));
 }
 const PERSONALITY_BEHAVIOR = {
-    // Bouncy and energetic: rarely settles, frequently changes direction.
-    playful: { sitChance: 0.06, stepTiles: 1, targetBucketMs: 1500, sleepRiseMul: 0.9 },
-    // Purposeful stalker: covers ground fast, commits to a target.
-    hunter: { sitChance: 0.12, stepTiles: 2, targetBucketMs: 4500, sleepRiseMul: 1.0 },
-    // Restless and erratic: darts around, re-targets constantly.
-    savage: { sitChance: 0.06, stepTiles: 2, targetBucketMs: 1000, sleepRiseMul: 1.1 },
-    // Calm and affectionate: loves to sit and watch.
-    cute: { sitChance: 0.45, stepTiles: 1, targetBucketMs: 3000, sleepRiseMul: 1.0 },
+    // Bouncy and energetic: steps often, rarely settles.
+    playful: { sitChance: 0.06, stepIntervalMs: 800, sleepRiseMul: 0.9 },
+    // Purposeful prowler: covers ground with brisk, steady steps.
+    hunter: { sitChance: 0.12, stepIntervalMs: 850, sleepRiseMul: 1.0 },
+    // Restless and erratic: quick little steps, almost never sits.
+    savage: { sitChance: 0.06, stepIntervalMs: 750, sleepRiseMul: 1.1 },
+    // Calm and affectionate: ambles gently and loves to sit.
+    cute: { sitChance: 0.45, stepIntervalMs: 1100, sleepRiseMul: 1.0 },
     // Lazy: rests often and tires quickly, so it naps a lot.
-    sleepy: { sitChance: 0.6, stepTiles: 1, targetBucketMs: 3500, sleepRiseMul: 1.6 },
+    sleepy: { sitChance: 0.6, stepIntervalMs: 1400, sleepRiseMul: 1.6 },
 };
 function behaviorFor(cat) {
     return PERSONALITY_BEHAVIOR[cat.personality] ?? PERSONALITY_BEHAVIOR.cute;
 }
-/** Move a wandering cat toward a per-cat target that changes over time. */
-function moveWanderer(cat, nowMs, behavior) {
-    const bucket = Math.floor(nowMs / behavior.targetBucketMs);
-    const rng = makeRng(hashId(cat.id) ^ bucket);
-    const targetX = clampGrid(GRID_MIN + Math.floor(rng() * (GRID_MAX - GRID_MIN + 1)));
-    const targetY = clampGrid(GRID_MIN + Math.floor(rng() * (GRID_MAX - GRID_MIN + 1)));
-    for (let i = 0; i < behavior.stepTiles; i++) {
-        if (cat.tileX < targetX)
-            cat.tileX++;
-        else if (cat.tileX > targetX)
-            cat.tileX--;
-        if (cat.tileY < targetY)
-            cat.tileY++;
-        else if (cat.tileY > targetY)
-            cat.tileY--;
-    }
+// Eight-way single-tile steps (cardinals + diagonals) for a gentle random walk.
+const WALK_DIRS = [
+    [1, 0], [-1, 0], [0, 1], [0, -1],
+    [1, 1], [-1, -1], [1, -1], [-1, 1],
+];
+/**
+ * Take at most one single-tile step on a paced cadence so the cat strolls tile by
+ * tile (easy to follow) instead of teleporting toward a distant target. Stateless
+ * and deterministic: a step lands on the first frame of each step interval.
+ */
+function moveWanderer(cat, nowMs, deltaMs, behavior) {
+    if (nowMs % behavior.stepIntervalMs >= deltaMs)
+        return;
+    const stepIdx = Math.floor(nowMs / behavior.stepIntervalMs);
+    const rng = makeRng(hashId(cat.id) ^ stepIdx);
+    const [dx, dy] = WALK_DIRS[Math.floor(rng() * WALK_DIRS.length)];
+    cat.tileX = clampGrid(cat.tileX + dx);
+    cat.tileY = clampGrid(cat.tileY + dy);
 }
 function stepCat(cat, deltaMs, nowMs) {
     const behavior = behaviorFor(cat);
@@ -71,7 +73,7 @@ function stepCat(cat, deltaMs, nowMs) {
     }
     else {
         cat.activity = 'wandering';
-        moveWanderer(cat, nowMs, behavior);
+        moveWanderer(cat, nowMs, deltaMs, behavior);
     }
 }
 /** Advance the simulation by deltaMs. Pure given inputs (movement uses clock.now()). */
