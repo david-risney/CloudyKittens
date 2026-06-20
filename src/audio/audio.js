@@ -45,7 +45,7 @@ export function createAudio(getSettings, backend) {
  * still degrades gracefully. Sound effects are short synthesized blips.
  */
 export function createWebAudioBackend() {
-    const MUSIC_URL = `${import.meta.env.BASE_URL}audio/calm-bgm.ogg`;
+    const MUSIC_URL = new URL('../../public/audio/calm-bgm.ogg', import.meta.url).href;
     const MUSIC_GAIN = 0.22;
     let ctx = null;
     let buffer = null;
