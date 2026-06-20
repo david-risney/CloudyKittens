@@ -15,38 +15,40 @@ function clampGrid(v) {
     return Math.max(GRID_MIN, Math.min(GRID_MAX, v));
 }
 const PERSONALITY_BEHAVIOR = {
-    // Bouncy and energetic: steps often, rarely settles.
-    playful: { sitChance: 0.06, stepIntervalMs: 1100, sleepRiseMul: 0.9 },
-    // Purposeful prowler: covers ground with brisk, steady steps.
-    hunter: { sitChance: 0.12, stepIntervalMs: 1200, sleepRiseMul: 1.0 },
-    // Restless and erratic: quick little steps, almost never sits.
-    savage: { sitChance: 0.06, stepIntervalMs: 1000, sleepRiseMul: 1.1 },
-    // Calm and affectionate: ambles gently and loves to sit.
-    cute: { sitChance: 0.45, stepIntervalMs: 1500, sleepRiseMul: 1.0 },
-    // Lazy: rests often and tires quickly, so it naps a lot.
-    sleepy: { sitChance: 0.6, stepIntervalMs: 1900, sleepRiseMul: 1.6 },
+    // Bouncy and energetic: steps often, rarely settles, changes its mind quickly.
+    playful: { sitChance: 0.06, stepIntervalMs: 1100, sleepRiseMul: 0.9, tripSteps: 3 },
+    // Purposeful prowler: covers ground with brisk, steady, fairly long strolls.
+    hunter: { sitChance: 0.12, stepIntervalMs: 1200, sleepRiseMul: 1.0, tripSteps: 5 },
+    // Restless and erratic: quick little steps, almost never sits, frequent turns.
+    savage: { sitChance: 0.06, stepIntervalMs: 1000, sleepRiseMul: 1.1, tripSteps: 3 },
+    // Calm and affectionate: ambles gently in long lines and loves to sit.
+    cute: { sitChance: 0.45, stepIntervalMs: 1500, sleepRiseMul: 1.0, tripSteps: 5 },
+    // Lazy: rests often and tires quickly, so it naps a lot; short, slow ambles.
+    sleepy: { sitChance: 0.6, stepIntervalMs: 1900, sleepRiseMul: 1.6, tripSteps: 4 },
 };
 function behaviorFor(cat) {
     return PERSONALITY_BEHAVIOR[cat.personality] ?? PERSONALITY_BEHAVIOR.cute;
 }
-// Eight-way single-tile steps (cardinals + diagonals) for a gentle random walk.
-const WALK_DIRS = [
-    [1, 0], [-1, 0], [0, 1], [0, -1],
-    [1, 1], [-1, -1], [1, -1], [-1, 1],
-];
 /**
- * Take at most one single-tile step on a paced cadence so the cat strolls tile by
- * tile (easy to follow) instead of teleporting toward a distant target. Stateless
- * and deterministic: a step lands on the first frame of each step interval.
+ * Take at most one single-tile step on a paced cadence, walking toward a wander
+ * target that the cat keeps for several steps (a "trip"). This gives the cat a
+ * sense of direction — it strolls in a line toward a spot, then picks a new spot —
+ * instead of twitching to a fresh random heading every step. Stateless and
+ * deterministic: the target is derived from the cat id and the current trip bucket.
  */
 function moveWanderer(cat, nowMs, deltaMs, behavior) {
     if (nowMs % behavior.stepIntervalMs >= deltaMs)
         return;
     const stepIdx = Math.floor(nowMs / behavior.stepIntervalMs);
-    const rng = makeRng(hashId(cat.id) ^ stepIdx);
-    const [dx, dy] = WALK_DIRS[Math.floor(rng() * WALK_DIRS.length)];
-    cat.tileX = clampGrid(cat.tileX + dx);
-    cat.tileY = clampGrid(cat.tileY + dy);
+    const tripBucket = Math.floor(stepIdx / behavior.tripSteps);
+    const rng = makeRng((hashId(cat.id) ^ Math.imul(tripBucket + 1, 0x9e3779b1)) >>> 0);
+    const span = GRID_MAX - GRID_MIN + 1;
+    const targetX = GRID_MIN + Math.floor(rng() * span);
+    const targetY = GRID_MIN + Math.floor(rng() * span);
+    const sx = Math.sign(targetX - cat.tileX);
+    const sy = Math.sign(targetY - cat.tileY);
+    cat.tileX = clampGrid(cat.tileX + sx);
+    cat.tileY = clampGrid(cat.tileY + sy);
 }
 function stepCat(cat, deltaMs, nowMs) {
     const behavior = behaviorFor(cat);
