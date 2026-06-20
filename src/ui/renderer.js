@@ -4,8 +4,13 @@ import { GRID_MIN, GRID_MAX, TILE_W, TILE_H } from '../game/constants.js';
 // between the discrete tiles the simulation moves them across.
 const catRender = new Map();
 let lastFrameMs = null;
-const TILES_PER_SEC = 2.2;
-const WALK_RATE = 9;
+// Visual glide speed (tiles/sec). Kept slow so a cat's stroll is easy to follow;
+// each cat gets a stable per-cat multiplier so they don't all move in lockstep.
+const BASE_TILES_PER_SEC = 1.0;
+const SPEED_VARIATION = 0.6; // ±, so cats range ~0.7..1.3 tiles/sec
+// Radians of step cycle advanced per tile travelled (≈1.5 strides per tile), so the
+// paw/bob animation stays in sync with however fast a given cat is actually walking.
+const STEP_RAD_PER_TILE = Math.PI * 3;
 const WALK_THRESHOLD = 0.06;
 // Transient "being petted" effect: catId -> remaining milliseconds.
 const petFx = new Map();
@@ -470,6 +475,15 @@ function drawCat(ctx, cat, render, ox, oy, selected, reducedMotion) {
         drawPetHearts(ctx, x, baseY, petProgress, reducedMotion);
     }
 }
+/** Stable 0..1 hash of a cat id, used to vary per-cat walk speed deterministically. */
+function hashUnit(id) {
+    let h = 2166136261;
+    for (let i = 0; i < id.length; i++) {
+        h ^= id.charCodeAt(i);
+        h = Math.imul(h, 16777619);
+    }
+    return ((h >>> 0) % 1000) / 1000;
+}
 /**
  * Advance a cat's interpolated render position toward its logical tile, and track
  * whether it is currently walking (so the renderer can animate a step cycle).
@@ -477,7 +491,8 @@ function drawCat(ctx, cat, render, ox, oy, selected, reducedMotion) {
 function updateCatRender(cat, dt, reducedMotion) {
     let r = catRender.get(cat.id);
     if (!r) {
-        r = { rx: cat.tileX, ry: cat.tileY, walking: false, phase: 0 };
+        const speed = BASE_TILES_PER_SEC * (1 - SPEED_VARIATION / 2 + hashUnit(cat.id) * SPEED_VARIATION);
+        r = { rx: cat.tileX, ry: cat.tileY, walking: false, phase: 0, speed };
         catRender.set(cat.id, r);
     }
     const dx = cat.tileX - r.rx;
@@ -489,18 +504,22 @@ function updateCatRender(cat, dt, reducedMotion) {
         r.walking = false;
         return r;
     }
-    const maxStep = TILES_PER_SEC * (dt / 1000);
+    const maxStep = r.speed * (dt / 1000);
+    let moved;
     if (dist <= maxStep || dist < 1e-3) {
         r.rx = cat.tileX;
         r.ry = cat.tileY;
+        moved = dist;
     }
     else {
         r.rx += (dx / dist) * maxStep;
         r.ry += (dy / dist) * maxStep;
+        moved = maxStep;
     }
     const walking = dist > WALK_THRESHOLD && cat.activity !== 'sleeping';
     r.walking = walking;
-    r.phase = walking ? r.phase + (dt / 1000) * WALK_RATE : 0;
+    // Tie the step cycle to distance travelled so feet/bob match the cat's speed.
+    r.phase = walking ? r.phase + moved * STEP_RAD_PER_TILE : 0;
     return r;
 }
 /** Draws the whole scene: floor, couch, and depth-sorted cats. */
