@@ -4,15 +4,32 @@ import { GRID_MIN, GRID_MAX, TILE_W, TILE_H } from '../game/constants.js';
 // between the discrete tiles the simulation moves them across.
 const catRender = new Map();
 let lastFrameMs = null;
-// Visual glide speed (tiles/sec). Tuned to keep pace with the simulation's one-tile
-// step cadence so a cat visibly strolls tile-to-tile; each cat gets a stable
-// per-cat multiplier so they don't all move in lockstep.
-const BASE_TILES_PER_SEC = 1.3;
-const SPEED_VARIATION = 0.6; // ±, so cats range ~1.0..1.6 tiles/sec
+// Visual glide speed (tiles/sec). The renderer self-tunes each cat's glide to the
+// cadence at which the simulation actually steps it tile-to-tile, so a cat walks one
+// tile and then visibly pauses before the next step (calm, easy to follow) instead of
+// perpetually sliding because the glide can't keep pace. See updateCatRender.
+const ARRIVE_FRACTION = 0.65; // spend ~65% of a step interval walking, ~35% paused
+const GLIDE_MIN = 0.9; // tiles/sec floor so slow cats still read as moving
+const GLIDE_MAX = 2.3; // tiles/sec ceiling so brisk cats don't appear to teleport
+const DEFAULT_STEP_MS = 1200; // seed cadence before a cat's real interval is measured
 // Radians of step cycle advanced per tile travelled (≈1.5 strides per tile), so the
 // paw/bob animation stays in sync with however fast a given cat is actually walking.
 const STEP_RAD_PER_TILE = Math.PI * 3;
 const WALK_THRESHOLD = 0.06;
+// Movement diagnostics. Toggle off by setting window.__CK_DEBUG = false in the
+// console (or flipping this default). Logs every logical tile step and a periodic
+// per-cat summary (fps, frame delta, glide lag) so movement issues can be inspected
+// from the browser console / pasted back for analysis.
+const DEBUG_MOVE_DEFAULT = true;
+function debugMoveOn() {
+    return (typeof window !== 'undefined' && window.__CK_DEBUG !== undefined)
+        ? !!window.__CK_DEBUG
+        : DEBUG_MOVE_DEFAULT;
+}
+let dbgLastLog = 0;
+let dbgFrames = 0;
+let dbgDtSum = 0;
+let dbgMaxDt = 0;
 // Transient "being petted" effect: catId -> remaining milliseconds.
 const petFx = new Map();
 const PET_DURATION_MS = 1100;
@@ -486,15 +503,55 @@ function hashUnit(id) {
     return ((h >>> 0) % 1000) / 1000;
 }
 /**
+ * Glide speed (tiles/sec) so a `jump`-tile step is covered in ~ARRIVE_FRACTION of the
+ * cat's measured step interval, leaving the remainder as a visible pause. Clamped so
+ * cats neither crawl imperceptibly nor appear to teleport.
+ */
+function glideSpeedFor(r, jump) {
+    const walkSec = (r.stepMs * ARRIVE_FRACTION) / 1000;
+    const raw = (jump / Math.max(0.001, walkSec)) * r.variance;
+    return Math.max(GLIDE_MIN, Math.min(GLIDE_MAX, raw));
+}
+/**
  * Advance a cat's interpolated render position toward its logical tile, and track
  * whether it is currently walking (so the renderer can animate a step cycle).
  */
 function updateCatRender(cat, dt, reducedMotion) {
     let r = catRender.get(cat.id);
     if (!r) {
-        const speed = BASE_TILES_PER_SEC * (1 - SPEED_VARIATION / 2 + hashUnit(cat.id) * SPEED_VARIATION);
-        r = { rx: cat.tileX, ry: cat.tileY, walking: false, phase: 0, speed };
+        r = {
+            rx: cat.tileX, ry: cat.tileY, walking: false, phase: 0,
+            // Per-cat ±8% charm so identical cadences don't move in perfect lockstep.
+            variance: 0.92 + hashUnit(cat.id) * 0.16,
+            stepMs: DEFAULT_STEP_MS,
+            speed: GLIDE_MIN,
+            lastTileX: cat.tileX, lastTileY: cat.tileY, lastStepMs: 0,
+        };
+        r.speed = glideSpeedFor(r, 1);
         catRender.set(cat.id, r);
+    }
+    // On each logical tile change, measure the cadence and retune the glide so the cat
+    // reaches the new tile partway through the interval and then pauses.
+    if (r.lastTileX !== cat.tileX || r.lastTileY !== cat.tileY) {
+        const nowMs = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+        const since = r.lastStepMs ? nowMs - r.lastStepMs : 0;
+        const jump = Math.hypot(cat.tileX - r.lastTileX, cat.tileY - r.lastTileY);
+        const lag = Math.hypot(cat.tileX - r.rx, cat.tileY - r.ry);
+        // Only fold "active walking" gaps into the cadence estimate; skip long pauses
+        // after a sit/sleep so the estimate reflects stride spacing, not idle time.
+        if (since >= 150 && since <= 2500) {
+            r.stepMs = r.stepMs * 0.6 + since * 0.4;
+        }
+        r.speed = glideSpeedFor(r, jump || 1);
+        if (debugMoveOn()) {
+            console.log(`[CK step] ${cat.id.slice(0, 6)} ${cat.personality ?? '?'}/${cat.activity ?? '?'} ` +
+                `(${r.lastTileX},${r.lastTileY})->(${cat.tileX},${cat.tileY}) jump=${jump.toFixed(2)} ` +
+                `sincePrevStep=${since.toFixed(0)}ms lagBeforeStep=${lag.toFixed(2)} ` +
+                `stepMs=${r.stepMs.toFixed(0)} spd=${r.speed.toFixed(2)}`);
+        }
+        r.lastStepMs = nowMs;
+        r.lastTileX = cat.tileX;
+        r.lastTileY = cat.tileY;
     }
     const dx = cat.tileX - r.rx;
     const dy = cat.tileY - r.ry;
@@ -533,6 +590,12 @@ export function renderScene(ctx, canvas, state, opts = {}) {
     if (dt > 100)
         dt = 100;
     lastFrameMs = timeMs;
+    if (debugMoveOn()) {
+        dbgFrames++;
+        dbgDtSum += dt;
+        if (dt > dbgMaxDt)
+            dbgMaxDt = dt;
+    }
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = WALL;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -548,6 +611,22 @@ export function renderScene(ctx, canvas, state, opts = {}) {
     for (const id of catRender.keys()) {
         if (!liveIds.has(id))
             catRender.delete(id);
+    }
+    if (debugMoveOn() && timeMs - dbgLastLog > 2000) {
+        const avgDt = dbgDtSum / Math.max(1, dbgFrames);
+        const parts = [];
+        for (const cat of state.cats) {
+            const r = catRender.get(cat.id);
+            if (!r)
+                continue;
+            const lag = Math.hypot(cat.tileX - r.rx, cat.tileY - r.ry);
+            parts.push(`${cat.id.slice(0, 6)} ${cat.activity ?? '?'} lag=${lag.toFixed(2)} spd=${r.speed.toFixed(2)}`);
+        }
+        console.log(`[CK frame] fps=${(1000 / avgDt).toFixed(0)} avgDt=${avgDt.toFixed(1)}ms maxDt=${dbgMaxDt.toFixed(0)}ms | ${parts.join(' | ')}`);
+        dbgLastLog = timeMs;
+        dbgFrames = 0;
+        dbgDtSum = 0;
+        dbgMaxDt = 0;
     }
     // Advance / expire pet reactions (and drop any for departed cats).
     for (const [id, remaining] of petFx) {

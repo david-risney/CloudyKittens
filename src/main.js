@@ -9,6 +9,7 @@ import { LocalStorageAdapter } from './platform/storage.js';
 import { createAutosave } from './platform/autosave.js';
 import { createAudio, createWebAudioBackend } from './audio/audio.js';
 import { createIntro } from './ui/intro.js';
+console.log('%c[CloudyKittens] build: tilewalk-debug-1 (' + new Date().toISOString() + ')', 'color:#7a5a2a;font-weight:bold');
 const clock = SystemClock;
 const storage = LocalStorageAdapter;
 let state = load(storage, clock);

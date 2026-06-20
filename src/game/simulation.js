@@ -16,15 +16,15 @@ function clampGrid(v) {
 }
 const PERSONALITY_BEHAVIOR = {
     // Bouncy and energetic: steps often, rarely settles.
-    playful: { sitChance: 0.06, stepIntervalMs: 800, sleepRiseMul: 0.9 },
+    playful: { sitChance: 0.06, stepIntervalMs: 1100, sleepRiseMul: 0.9 },
     // Purposeful prowler: covers ground with brisk, steady steps.
-    hunter: { sitChance: 0.12, stepIntervalMs: 850, sleepRiseMul: 1.0 },
+    hunter: { sitChance: 0.12, stepIntervalMs: 1200, sleepRiseMul: 1.0 },
     // Restless and erratic: quick little steps, almost never sits.
-    savage: { sitChance: 0.06, stepIntervalMs: 750, sleepRiseMul: 1.1 },
+    savage: { sitChance: 0.06, stepIntervalMs: 1000, sleepRiseMul: 1.1 },
     // Calm and affectionate: ambles gently and loves to sit.
-    cute: { sitChance: 0.45, stepIntervalMs: 1100, sleepRiseMul: 1.0 },
+    cute: { sitChance: 0.45, stepIntervalMs: 1500, sleepRiseMul: 1.0 },
     // Lazy: rests often and tires quickly, so it naps a lot.
-    sleepy: { sitChance: 0.6, stepIntervalMs: 1400, sleepRiseMul: 1.6 },
+    sleepy: { sitChance: 0.6, stepIntervalMs: 1900, sleepRiseMul: 1.6 },
 };
 function behaviorFor(cat) {
     return PERSONALITY_BEHAVIOR[cat.personality] ?? PERSONALITY_BEHAVIOR.cute;
