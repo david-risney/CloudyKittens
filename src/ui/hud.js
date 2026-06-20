@@ -140,6 +140,8 @@ export function createHud(container, opts) {
         }
         if (outcome.sfx)
             opts.playSfx(outcome.sfx);
+        if (selection.kind === 'pet')
+            opts.onPet?.(catId);
         render();
     }
     render();

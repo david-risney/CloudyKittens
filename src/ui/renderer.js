@@ -7,6 +7,9 @@ let lastFrameMs = null;
 const TILES_PER_SEC = 2.2;
 const WALK_RATE = 9;
 const WALK_THRESHOLD = 0.06;
+// Transient "being petted" effect: catId -> remaining milliseconds.
+const petFx = new Map();
+const PET_DURATION_MS = 1100;
 const FLOOR_LIGHT = '#e8dcc6';
 const FLOOR_DARK = '#ddcdb2';
 const WALL = '#cdb79e';
@@ -213,9 +216,44 @@ function drawBodyMarkings(ctx, cat, x, baseY, pal) {
     }
     ctx.restore();
 }
+/**
+ * Start the "being petted" reaction for a cat: a happy little bounce with
+ * floating hearts. Call from the UI when a pet action lands.
+ */
+export function triggerPet(catId) {
+    petFx.set(catId, PET_DURATION_MS);
+}
+/** Floating hearts that rise and fade above a freshly petted cat. */
+function drawPetHearts(ctx, x, baseY, progress, reducedMotion) {
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    if (reducedMotion) {
+        // Honor reduced motion: a single static heart, no rising or wiggle.
+        ctx.font = '18px system-ui';
+        ctx.fillText('💗', x, baseY - 34);
+        ctx.restore();
+        return;
+    }
+    const hearts = [
+        { dx: -10, delay: 0, size: 16 },
+        { dx: 9, delay: 0.18, size: 13 },
+        { dx: -2, delay: 0.36, size: 18 },
+    ];
+    for (const h of hearts) {
+        const p = progress - h.delay;
+        if (p < 0 || p > 1)
+            continue;
+        const rise = p * 34;
+        const alpha = p < 0.75 ? 1 : Math.max(0, 1 - (p - 0.75) / 0.25);
+        ctx.globalAlpha = alpha;
+        ctx.font = `${h.size}px system-ui`;
+        ctx.fillText('💗', x + h.dx, baseY - 26 - rise);
+    }
+    ctx.restore();
+}
 /** Two alternating front paws that lift in a stepping rhythm while walking. */
-function drawWalkingFeet(ctx, x, baseY, color, phase) {
-    const lift = 3.2;
+function drawWalkingFeet(ctx, x, baseY, color, phase) {    const lift = 3.2;
     const yL = baseY + 20 - Math.max(0, Math.sin(phase)) * lift;
     const yR = baseY + 20 - Math.max(0, Math.sin(phase + Math.PI)) * lift;
     ctx.fillStyle = color;
@@ -229,8 +267,15 @@ function drawWalkingFeet(ctx, x, baseY, color, phase) {
 function drawCat(ctx, cat, render, ox, oy, selected, reducedMotion) {
     const { x, y } = tileToScreen(render.rx, render.ry, ox, oy);
     const walking = render.walking && !reducedMotion;
+    const petRemaining = petFx.get(cat.id) ?? 0;
+    const petting = petRemaining > 0;
+    const petProgress = petting ? 1 - petRemaining / PET_DURATION_MS : 0;
     // Body lifts a touch on each step for a gentle walk bounce.
-    const bob = walking ? Math.abs(Math.sin(render.phase)) * 2.5 : 0;
+    let bob = walking ? Math.abs(Math.sin(render.phase)) * 2.5 : 0;
+    // A few happy hops while being petted (skipped under reduced motion).
+    if (petting && !reducedMotion) {
+        bob += Math.abs(Math.sin(petProgress * Math.PI * 3)) * 3.5;
+    }
     const baseY = y - 16 - bob;
     const pal = paletteFor(cat);
     const coat = pal.coats[cat.appearance] ?? pal.coats[0];
@@ -381,6 +426,10 @@ function drawCat(ctx, cat, render, ox, oy, selected, reducedMotion) {
         ctx.font = '16px system-ui';
         ctx.fillText('z', x + 18, baseY - 8);
     }
+    // Floating hearts while being petted (drawn last so they sit on top).
+    if (petting) {
+        drawPetHearts(ctx, x, baseY, petProgress, reducedMotion);
+    }
 }
 /**
  * Advance a cat's interpolated render position toward its logical tile, and track
@@ -440,6 +489,14 @@ export function renderScene(ctx, canvas, state, opts = {}) {
     for (const id of catRender.keys()) {
         if (!liveIds.has(id))
             catRender.delete(id);
+    }
+    // Advance / expire pet reactions (and drop any for departed cats).
+    for (const [id, remaining] of petFx) {
+        const next = liveIds.has(id) ? remaining - dt : 0;
+        if (next <= 0)
+            petFx.delete(id);
+        else
+            petFx.set(id, next);
     }
     // Depth-sort by interpolated position so overlap stays correct while walking.
     const order = [...state.cats].sort((a, b) => {
