@@ -1,7 +1,7 @@
 import { createCat } from './game/cats.js';
 import { step } from './game/simulation.js';
 import { load, save } from './game/persistence.js';
-import { renderScene, catAtPoint, triggerPet } from './ui/renderer.js';
+import { renderScene, catAtPoint, triggerPet, triggerFloat } from './ui/renderer.js';
 import { createHud } from './ui/hud.js';
 import { openShopModal, openLookupModal } from './ui/modals.js';
 import { SystemClock } from './platform/clock.js';
@@ -59,6 +59,9 @@ const hud = createHud(hudBar, {
     },
     onPet: (catId) => {
         triggerPet(catId);
+    },
+    onFloat: (catId, emojis) => {
+        triggerFloat(catId, emojis);
     },
     onChange: () => {
         hud.render();

@@ -6,7 +6,7 @@ import { ALL_ITEM_IDS } from '../game/items.js';
  * resulting state plus any side effects for the presentation layer to perform.
  */
 export function applySelectionToCat(state, selection, catId) {
-    const base = { state, sfx: null, feedback: null, openLookupCatId: null };
+    const base = { state, sfx: null, feedback: null, openLookupCatId: null, floatEmojis: null };
     if (selection.kind === 'lookup') {
         return { ...base, openLookupCatId: catId };
     }
@@ -21,12 +21,27 @@ export function applySelectionToCat(state, selection, catId) {
             return { ...base, feedback: 'This cat is full right now.' };
         }
         const earned = r.moneyGained > 0 ? ` +${r.moneyGained}🪙` : '';
-        return { ...base, state: r.state, sfx: 'feed', feedback: `Yum!${earned}` };
+        // 🍗 marks the hunger drop; ❤️/💔 reflect the trust shift from preference.
+        const emojis = ['🍗', trustEmoji(r.trustDelta)].filter(Boolean);
+        return { ...base, state: r.state, sfx: 'feed', feedback: `Yum!${earned}`, floatEmojis: emojis };
     }
     if (isToy(item)) {
-        return { ...base, state: useToy(state, catId, item), sfx: 'toy', feedback: 'Playtime!' };
+        const next = useToy(state, catId, item);
+        const delta = catTrust(next, catId) - catTrust(state, catId);
+        const emojis = [trustEmoji(delta) ?? '🧶'];
+        return { ...base, state: next, sfx: 'toy', feedback: 'Playtime!', floatEmojis: emojis };
     }
     return base;
+}
+function catTrust(state, catId) {
+    return state.cats.find((c) => c.id === catId)?.trust ?? 0;
+}
+function trustEmoji(delta) {
+    if (delta > 0)
+        return '❤️';
+    if (delta < 0)
+        return '💔';
+    return null;
 }
 const ITEM_ORDER = [...ALL_ITEM_IDS];
 const ACTIVITY_ICON = {
@@ -142,6 +157,8 @@ export function createHud(container, opts) {
             opts.playSfx(outcome.sfx);
         if (selection.kind === 'pet')
             opts.onPet?.(catId);
+        if (outcome.floatEmojis?.length)
+            opts.onFloat?.(catId, outcome.floatEmojis);
         render();
     }
     render();

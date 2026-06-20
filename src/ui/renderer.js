@@ -10,6 +10,9 @@ const WALK_THRESHOLD = 0.06;
 // Transient "being petted" effect: catId -> remaining milliseconds.
 const petFx = new Map();
 const PET_DURATION_MS = 1100;
+// Floating stat-change emojis that rise and fade above a cat.
+const floatFx = [];
+const FLOAT_DURATION_MS = 1300;
 const FLOOR_LIGHT = '#e8dcc6';
 const FLOOR_DARK = '#ddcdb2';
 const WALL = '#cdb79e';
@@ -222,6 +225,42 @@ function drawBodyMarkings(ctx, cat, x, baseY, pal) {
  */
 export function triggerPet(catId) {
     petFx.set(catId, PET_DURATION_MS);
+}
+/**
+ * Float one or more emojis up from a cat to signal a stat change (e.g. 🍗 when
+ * fed, ❤️/💔 when trust shifts). Multiple emojis fan out and stagger slightly.
+ */
+export function triggerFloat(catId, emojis) {
+    const list = Array.isArray(emojis) ? emojis : [emojis];
+    const n = list.length;
+    list.forEach((emoji, i) => {
+        if (!emoji)
+            return;
+        floatFx.push({
+            catId,
+            emoji,
+            age: 0,
+            delay: i * 150,
+            dx: (i - (n - 1) / 2) * 16,
+        });
+    });
+}
+/** Draw a single rising, fading stat-change emoji above a cat. */
+function drawFloatEmoji(ctx, x, topY, progress, emoji, reducedMotion) {
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = '20px system-ui';
+    if (reducedMotion) {
+        // Honor reduced motion: hold the emoji static, no rising drift.
+        ctx.fillText(emoji, x, topY - 30);
+        ctx.restore();
+        return;
+    }
+    const rise = progress * 42;
+    ctx.globalAlpha = progress < 0.7 ? 1 : Math.max(0, 1 - (progress - 0.7) / 0.3);
+    ctx.fillText(emoji, x, topY - 24 - rise);
+    ctx.restore();
 }
 /** Floating hearts that rise and fade above a freshly petted cat. */
 function drawPetHearts(ctx, x, baseY, progress, reducedMotion) {
@@ -507,6 +546,25 @@ export function renderScene(ctx, canvas, state, opts = {}) {
     for (const cat of order) {
         const r = catRender.get(cat.id);
         drawCat(ctx, cat, r, ox, oy, opts.selectedCatId === cat.id, reducedMotion);
+    }
+    // Floating stat-change emojis, advanced and drawn on top of the cats.
+    for (let i = floatFx.length - 1; i >= 0; i--) {
+        const fx = floatFx[i];
+        const r = catRender.get(fx.catId);
+        if (!liveIds.has(fx.catId) || !r) {
+            floatFx.splice(i, 1);
+            continue;
+        }
+        fx.age += dt;
+        const progress = (fx.age - fx.delay) / FLOAT_DURATION_MS;
+        if (progress >= 1) {
+            floatFx.splice(i, 1);
+            continue;
+        }
+        if (progress < 0)
+            continue;
+        const { x, y } = tileToScreen(r.rx, r.ry, ox, oy);
+        drawFloatEmoji(ctx, x + fx.dx, y - 16, progress, fx.emoji, reducedMotion);
     }
 }
 /** Hit-test a screen point to the nearest cat (for click targeting). */
